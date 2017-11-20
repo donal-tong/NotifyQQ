@@ -34,7 +34,7 @@ import java.util.regex.Pattern;
  * @author Kohsuke Kawaguchi
  */
 public class NotifyQQ extends Notifier {
-
+    final static String HOST = "192.168.22.253";
     /**
      * QQ号码列表
      */
@@ -81,7 +81,11 @@ public class NotifyQQ extends Notifier {
         String jobURL = "";
         try {
             jobURL = build.getEnvironment(listener).expand("${JOB_URL}");
+            jobURL = jobURL.replaceAll("localhost", HOST);
             logger.println("jobURL = " + jobURL);
+            logger.println("" + build.getEnvironment(listener).expand("${Environment}"));
+            logger.println("" + build.getEnvironment(listener).expand("${ProduceFavor}"));
+            logger.println("" + build.getEnvironment(listener).expand("${pgyer}"));
         } catch (Exception e) {
             logger.println("tokenmacro expand error.");
         }
@@ -89,7 +93,13 @@ public class NotifyQQ extends Notifier {
         String msg = "各位小伙伴，项目";
         msg += build.getFullDisplayName();
         if (build.getResult() == Result.SUCCESS) {
-            msg += "编译成功！" + qqmessage;
+            if (build.getDescription() != null) {
+                String temp = build.getDescription();
+                temp = temp.replace("<img src=\"","").replace("\">", "");
+                msg += "编译成功！\n二维码地址:" + temp;
+            } else {
+                msg += "编译成功！\n地址:\n" + jobURL + build.getNumber() + "\n" + qqmessage;
+            }
         } else {
             msg += "编译失败了...";
             msg += "jenkins地址:" + jobURL;
@@ -99,8 +109,16 @@ public class NotifyQQ extends Notifier {
         msg = msg.replaceAll("\\+", "_");
 
         for (int i = 0; i < qQNumbers.size(); i++) {
-            QQNumber number = qQNumbers.get(i);
-            send(GenerateMessageURL(number.GetUrlString(), msg));
+            if (build.getResult() == Result.SUCCESS) {
+                QQNumber number = qQNumbers.get(i);
+                send(GenerateMessageURL(number.GetUrlString(), msg));
+            } else {
+                QQNumber number = qQNumbers.get(i);
+                if (number.getNumber().equals("541815852")) {
+                    send(GenerateMessageURL(number.GetUrlString(), msg));
+                    break;
+                }
+            }
         }
 
         return true;
